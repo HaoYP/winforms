@@ -3942,7 +3942,7 @@ namespace System.Windows.Forms {
                 }
             }
 
-            internal Rectangle VisibleArea
+            internal Rectangle VisibleArea //ListBox bounds without scrollbars
             {
                 get
                 {
@@ -4037,7 +4037,7 @@ namespace System.Windows.Forms {
             /// <returns>Returns the element in the specified direction.</returns>
             internal override UnsafeNativeMethods.IRawElementProviderFragment FragmentNavigate(UnsafeNativeMethods.NavigateDirection direction)
             {
-                if (direction == UnsafeNativeMethods.NavigateDirection.FirstChild ||
+                if (direction == UnsafeNativeMethods.NavigateDirection.FirstChild || // Need to initialize _itemAccessibleObjects
                     direction == UnsafeNativeMethods.NavigateDirection.LastChild)
                 {
                     foreach (var item in _owningListBox.Items.EntryArray.Entries)
