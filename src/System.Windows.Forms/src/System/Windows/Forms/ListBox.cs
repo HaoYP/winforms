@@ -98,7 +98,7 @@ namespace System.Windows.Forms {
         DrawMode drawMode = System.Windows.Forms.DrawMode.Normal;
         BorderStyle borderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
         SelectionMode selectionMode = System.Windows.Forms.SelectionMode.One;
-               
+
         SelectionMode cachedSelectionMode = System.Windows.Forms.SelectionMode.One;
         //We need to know that we are in middle of handleRecreate through Setter of SelectionMode. 
         //In this case we set a bool denoting that we are changing SelectionMode and 
@@ -137,12 +137,12 @@ namespace System.Windows.Forms {
         ///     Creates a basic win32 list box with default values for everything.
         /// </devdoc>
         public ListBox() : base() {
-            SetStyle(ControlStyles.UserPaint | 
-                     ControlStyles.StandardClick | 
+            SetStyle(ControlStyles.UserPaint |
+                     ControlStyles.StandardClick |
                      ControlStyles.UseTextForAccessibility, false);
 
             // this class overrides GetPreferredSizeCore, let Control automatically cache the result
-            SetState2(STATE2_USEPREFERREDSIZECACHE, true);  
+            SetState2(STATE2_USEPREFERREDSIZECACHE, true);
 
             SetBounds(0, 0, 120, 96);
 
@@ -783,7 +783,7 @@ namespace System.Windows.Forms {
             get {
 
                 SelectionMode current = (selectionModeChanging) ? cachedSelectionMode : selectionMode;
-                
+
                 if (current == SelectionMode.None) {
                     return -1;
                 }
@@ -1138,7 +1138,7 @@ namespace System.Windows.Forms {
         EditorBrowsable(EditorBrowsableState.Never)
         ]
         public new event EventHandler PaddingChanged {
-            add => base.PaddingChanged += value; 
+            add => base.PaddingChanged += value;
             remove => base.PaddingChanged -= value; }
 
         /// <devdoc>
@@ -1553,7 +1553,7 @@ namespace System.Windows.Forms {
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
 
-            
+
             //for getting the current Locale to set the Scrollbars...
             //
             SendMessage(NativeMethods.LB_SETLOCALE, CultureInfo.CurrentCulture.LCID, 0);
@@ -1630,7 +1630,7 @@ namespace System.Windows.Forms {
             UpdateFontCache();
         }
 
-       
+
         /// <devdoc>
         ///    <para>We override this so we can re-create the handle if the parent has changed.</para>
         /// </devdoc>
@@ -1820,15 +1820,15 @@ namespace System.Windows.Forms {
         private void ResetItemHeight() {
             itemHeight = DefaultItemHeight;
         }
-      
-       [SuppressMessage("Microsoft.Portability", "CA1902:AvoidTestingForFloatingPointEquality")]
-       protected override void ScaleControl(SizeF factor, BoundsSpecified specified) {
-           
-           if (factor.Width != 1F && factor.Height != 1F) {
-               UpdateFontCache();
-           }
-           base.ScaleControl(factor, specified);
-       }
+
+        [SuppressMessage("Microsoft.Portability", "CA1902:AvoidTestingForFloatingPointEquality")]
+        protected override void ScaleControl(SizeF factor, BoundsSpecified specified) {
+
+            if (factor.Width != 1F && factor.Height != 1F) {
+                UpdateFontCache();
+            }
+            base.ScaleControl(factor, specified);
+        }
 
 
         /// <devdoc>
@@ -1849,38 +1849,38 @@ namespace System.Windows.Forms {
         ///     Performs the work of setting the specified items into the ListBox.
         /// </devdoc>
         protected override void SetItemsCore(IList value) {
-                BeginUpdate();
-                Items.ClearInternal();
-                Items.AddRangeInternal(value);
+            BeginUpdate();
+            Items.ClearInternal();
+            Items.AddRangeInternal(value);
 
-                this.SelectedItems.Dirty();
+            this.SelectedItems.Dirty();
 
-                // if the list changed, we want to keep the same selected index
-                // CurrencyManager will provide the PositionChanged event
-                // it will be provided before changing the list though...
-                if (this.DataManager != null) {
-                    if (this.DataSource is ICurrencyManagerProvider) {
-                        // Everett ListControl's had a 
-
-
+            // if the list changed, we want to keep the same selected index
+            // CurrencyManager will provide the PositionChanged event
+            // it will be provided before changing the list though...
+            if (this.DataManager != null) {
+                if (this.DataSource is ICurrencyManagerProvider) {
+                    // Everett ListControl's had a 
 
 
 
-                        this.selectedValueChangedFired = false;
-                    }
 
-                    if (IsHandleCreated) {
-                        SendMessage(NativeMethods.LB_SETCURSEL, DataManager.Position, 0);
-                    }
 
-                    // if the list changed and we still did not fire the
-                    // onselectedChanged event, then fire it now;
-                    if (!selectedValueChangedFired) {
-                        OnSelectedValueChanged(EventArgs.Empty);
-                        selectedValueChangedFired = false;
-                    }
+                    this.selectedValueChangedFired = false;
                 }
-                EndUpdate();
+
+                if (IsHandleCreated) {
+                    SendMessage(NativeMethods.LB_SETCURSEL, DataManager.Position, 0);
+                }
+
+                // if the list changed and we still did not fire the
+                // onselectedChanged event, then fire it now;
+                if (!selectedValueChangedFired) {
+                    OnSelectedValueChanged(EventArgs.Empty);
+                    selectedValueChangedFired = false;
+                }
+            }
+            EndUpdate();
         }
 
         protected override void SetItemCore(int index, object value) {
@@ -2076,7 +2076,7 @@ namespace System.Windows.Forms {
 
                 try {
                     Rectangle bounds = Rectangle.FromLTRB(dis.rcItem.left, dis.rcItem.top, dis.rcItem.right, dis.rcItem.bottom);
-                    
+
                     if (HorizontalScrollbar) {
                         if (MultiColumn) {
                             bounds.Width = Math.Max(ColumnWidth, bounds.Width);
@@ -2085,7 +2085,7 @@ namespace System.Windows.Forms {
                             bounds.Width = Math.Max(MaxItemWidth, bounds.Width);
                         }
                     }
-                    
+
 
                     OnDrawItem(new DrawItemEventArgs(g, Font, bounds, dis.itemID, (DrawItemState)dis.itemState, ForeColor, BackColor));
                 }
@@ -2163,8 +2163,8 @@ namespace System.Windows.Forms {
 
 
                         if (!doubleClickFired && !ValidationCancelled) {
-                             OnClick(new MouseEventArgs(MouseButtons.Left, 1, NativeMethods.Util.SignedLOWORD(m.LParam), NativeMethods.Util.SignedHIWORD(m.LParam), 0));
-                             OnMouseClick(new MouseEventArgs(MouseButtons.Left, 1, NativeMethods.Util.SignedLOWORD(m.LParam), NativeMethods.Util.SignedHIWORD(m.LParam), 0));
+                            OnClick(new MouseEventArgs(MouseButtons.Left, 1, NativeMethods.Util.SignedLOWORD(m.LParam), NativeMethods.Util.SignedHIWORD(m.LParam), 0));
+                            OnMouseClick(new MouseEventArgs(MouseButtons.Left, 1, NativeMethods.Util.SignedLOWORD(m.LParam), NativeMethods.Util.SignedHIWORD(m.LParam), 0));
 
                         }
                         else {
@@ -2176,7 +2176,7 @@ namespace System.Windows.Forms {
                                 OnMouseDoubleClick(new MouseEventArgs(MouseButtons.Left, 2, NativeMethods.Util.SignedLOWORD(m.LParam), NativeMethods.Util.SignedHIWORD(m.LParam), 0));
 
                             }
-                       }
+                        }
                     }
 
                     //
@@ -2288,7 +2288,7 @@ namespace System.Windows.Forms {
             /// <devdoc>
             ///     Adds the given collection of items to the array.
             /// </devdoc>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
+            [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
             public void AddRange(ICollection items) {
                 if (items == null) {
                     throw new ArgumentNullException(nameof(items));
@@ -2549,7 +2549,7 @@ namespace System.Windows.Forms {
                 Array.Sort(entries, 0, count, this);
             }
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
+            [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
             public void Sort(Array externalArray) {
                 Array.Sort(externalArray, this);
             }
@@ -2622,7 +2622,7 @@ namespace System.Windows.Forms {
 
                     while(true) {
                         if (current < items.count - 1) {
-                                            current++;
+                            current++;
                             if (anyBit) {
                                 if ((items.entries[current].state & state) != 0) {
                                     return true;
@@ -2830,11 +2830,11 @@ namespace System.Windows.Forms {
                         InnerArray.Remove(item);
                     }
                 }
-              
+
                 return index;
             }
 
- 
+
             int IList.Add(object item) {
                 return Add(item);
             }
@@ -2848,7 +2848,7 @@ namespace System.Windows.Forms {
                 owner.CheckNoDataSource();
                 AddRangeInternal((ICollection)items);
             }
-           
+
             internal void AddRangeInternal(ICollection items) {
 
                 if (items == null)
@@ -3191,7 +3191,7 @@ namespace System.Windows.Forms {
                     Array.Sort(innerArray,0,count);
                     index = IndexOf(item);
                 }
-               return index;
+                return index;
             }
 
             /// <devdoc>
@@ -3764,10 +3764,10 @@ namespace System.Windows.Forms {
             /// </devdoc>
             internal void EnsureUpToDate() {
                 if (stateDirty) {
-                     stateDirty = false;
-                     if (owner.IsHandleCreated) {
-                         owner.NativeUpdateSelection();
-                     }
+                    stateDirty = false;
+                    if (owner.IsHandleCreated) {
+                        owner.NativeUpdateSelection();
+                    }
                 }
             }
 
@@ -3813,7 +3813,7 @@ namespace System.Windows.Forms {
             // this "object" is then compared in the IndexOf( ) method of the itemsCollection.
             //
             internal object GetObjectAt(int index) {
-               return InnerArray.GetEntryObject(index, SelectedObjectCollection.SelectedObjectMask);
+                return InnerArray.GetEntryObject(index, SelectedObjectCollection.SelectedObjectMask);
             }
 
             /// <devdoc>
@@ -3962,7 +3962,8 @@ namespace System.Windows.Forms {
 
             internal override bool IsPatternSupported(int patternId)
             {
-                if (patternId == NativeMethods.UIA_ScrollPatternId)
+                if (patternId == NativeMethods.UIA_ScrollPatternId ||
+                    patternId == NativeMethods.UIA_SelectionPatternId)
                 {
                     return true;
                 }
@@ -4094,10 +4095,10 @@ namespace System.Windows.Forms {
                         return _owningListBox.Focused;
                     case NativeMethods.UIA_NativeWindowHandlePropertyId:
                         return _owningListBox.Handle;
-                    case NativeMethods.UIA_IsControlElementPropertyId:
-                        return true;
                     case NativeMethods.UIA_IsContentElementPropertyId:
                         return true;
+                    case NativeMethods.UIA_IsSelectionPatternAvailablePropertyId:
+                        return IsPatternSupported(NativeMethods.UIA_SelectionPatternId);
                     case NativeMethods.UIA_IsScrollPatternAvailablePropertyId:
                         return IsPatternSupported(NativeMethods.UIA_ScrollPatternId);
                     case NativeMethods.UIA_ClassNamePropertyId:
@@ -4140,6 +4141,11 @@ namespace System.Windows.Forms {
                 {
                     itemAccessibleObject.RaiseAutomationEvent(NativeMethods.UIA_SelectionItem_ElementSelectedEventId);
                 }
+            }
+
+            internal override void SetValue(string newValue)
+            {
+                Value = newValue;
             }
 
             internal override void SetFocus()
@@ -4242,7 +4248,7 @@ namespace System.Windows.Forms {
                         return Rectangle.Empty;
                     }
 
-                    if(_owner.VisibleArea.Bottom < bounds.Bottom)
+                    if (_owner.VisibleArea.Bottom < bounds.Bottom)
                     {
                         bounds.Height = _owner.VisibleArea.Bottom - bounds.Top;
                     }
@@ -4488,7 +4494,7 @@ namespace System.Windows.Forms {
 
                     return;
                 }
-                
+
                 int firstVisibleIndex = _owningListBox.SendMessage(NativeMethods.LB_GETTOPINDEX, 0, 0).ToInt32();
 
                 if (_itemId < firstVisibleIndex)
@@ -4584,6 +4590,7 @@ namespace System.Windows.Forms {
                 }
 
                 return new UnsafeNativeMethods.IRawElementProviderSimple[0];
+            }
         }
     }
 }
