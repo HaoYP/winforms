@@ -24,6 +24,7 @@ namespace System.Windows.Forms {
     using Microsoft.Win32;
     using System.Text;
     using System.Runtime.Serialization;
+    using Accessibility;
 
     /// <devdoc>
     ///
@@ -1378,7 +1379,7 @@ namespace System.Windows.Forms {
         }
 
         /// <devdoc>
-        ///     Adds the given item to the native combo box.  This asserts if the handle hasn't been
+        ///     Adds the given item to the native List box.  This asserts if the handle hasn't been
         ///     created.
         /// </devdoc>
         private int NativeAdd(object item) {
@@ -1401,7 +1402,7 @@ namespace System.Windows.Forms {
         }
 
         /// <devdoc>
-        ///     Clears the contents of the combo box.
+        ///     Clears the contents of the List box.
         /// </devdoc>
         private void NativeClear() {
             Debug.Assert(IsHandleCreated, "Shouldn't be calling Native methods before the handle is created.");
@@ -1419,7 +1420,7 @@ namespace System.Windows.Forms {
         }
 
         /// <devdoc>
-        ///     Inserts the given item to the native combo box at the index.  This asserts if the handle hasn't been
+        ///     Inserts the given item to the native List box at the index.  This asserts if the handle hasn't been
         ///     created or if the resulting insert index doesn't match the passed in index.
         /// </devdoc>
         private int NativeInsert(int index, object item) {
@@ -2752,7 +2753,7 @@ namespace System.Windows.Forms {
             ///     added to the end of the existing list of items. For a sorted List box,
             ///     the item is inserted into the list according to its sorted position.
             ///     The item's toString() method is called to obtain the string that is
-            ///     displayed in the combo box.
+            ///     displayed in the List box.
             ///     A SystemException occurs if there is insufficient space available to
             ///     store the new item.
             /// </devdoc>
@@ -2965,11 +2966,11 @@ namespace System.Windows.Forms {
             }
 
             /// <devdoc>
-            ///     Adds an item to the combo box. For an unsorted combo box, the item is
-            ///     added to the end of the existing list of items. For a sorted combo box,
+            ///     Adds an item to the List box. For an unsorted List box, the item is
+            ///     added to the end of the existing list of items. For a sorted List box,
             ///     the item is inserted into the list according to its sorted position.
             ///     The item's toString() method is called to obtain the string that is
-            ///     displayed in the combo box.
+            ///     displayed in the List box.
             ///     A SystemException occurs if there is insufficient space available to
             ///     store the new item.
             /// </devdoc>
@@ -2984,7 +2985,7 @@ namespace System.Windows.Forms {
                     throw new ArgumentNullException(nameof(item));
                 }
 
-                // If the combo box is sorted, then nust treat this like an add
+                // If the List box is sorted, then nust treat this like an add
                 // because we are going to twiddle the index anyway.
                 //
                 if (owner.sorted) {
@@ -3897,6 +3898,7 @@ namespace System.Windows.Forms {
             }
         }
 
+        internal override bool SupportsUiaProviders => true;
 
         /// <devdoc>
         /// </devdoc>
@@ -3913,6 +3915,8 @@ namespace System.Windows.Forms {
         [ComVisible(true)]
         internal class ListBoxAccessibleObject : ControlAccessibleObject
         {
+            private const int LISTBOX_ACC_ITEM_INDEX = 1;
+
             private readonly ListBox _owningListBox;
             private readonly ListBoxItemAccessibleObjectCollection _itemAccessibleObjects;
 
@@ -3923,12 +3927,27 @@ namespace System.Windows.Forms {
             public ListBoxAccessibleObject(ListBox owningListBox) : base(owningListBox)
             {
                 _owningListBox = owningListBox;
-                _itemAccessibleObjects = new ListBoxItemAccessibleObjectCollection(owningListBox);
+                _itemAccessibleObjects = new ListBoxItemAccessibleObjectCollection(owningListBox, this);
             }
-                                                         
-            internal override object GetObjectForChildInternal(int idChild)
+
+            public override Rectangle Bounds
             {
-                return _itemAccessibleObjects[_owningListBox.Items.EntryArray.Entries[idChild - 1]];
+                get
+                {
+                    Rectangle bounds = base.Bounds;
+                    bounds.Width = _owningListBox.Bounds.Width - 5;
+                    bounds.Height = _owningListBox.Bounds.Height - 5;
+
+                    return bounds;
+                }
+            }
+
+            internal Rectangle VisibleArea
+            {
+                get
+                {
+                    return base.Bounds;
+                }
             }
 
             internal override bool IsIAccessibleExSupported()
@@ -3940,16 +3959,210 @@ namespace System.Windows.Forms {
 
                 return base.IsIAccessibleExSupported();
             }
+
+            internal override bool IsPatternSupported(int patternId)
+            {
+                if (patternId == NativeMethods.UIA_ScrollPatternId)
+                {
+                    return true;
+                }
+                return base.IsPatternSupported(patternId);
+            }
+
+            internal override int[] RuntimeId
+            {
+                get
+                {
+                    if (_owningListBox != null)
+                    {
+                        // we need to provide a unique ID
+                        // others are implementing this in the same manner
+                        // first item is static - 0x2a (RuntimeIDFirstItem)
+                        // second item can be anything, but here it is a hash
+
+                        var runtimeId = new int[3];
+                        runtimeId[0] = RuntimeIDFirstItem;
+                        runtimeId[1] = (int)(long)_owningListBox.Handle;
+                        runtimeId[2] = _owningListBox.GetHashCode();
+                        return runtimeId;
+                    }
+
+                    return base.RuntimeId;
+                }
+            }
+
+            internal override string get_accNameInternal(object childID)
+            {
+                this.ValidateChildID(ref childID);
+
+                if (childID != null && ((int)childID) == LISTBOX_ACC_ITEM_INDEX)
+                {
+                    return this.Name;
+                }
+                else
+                {
+                    return base.get_accNameInternal(childID);
+                }
+            }
+
+            internal override string get_accKeyboardShortcutInternal(object childID)
+            {
+                this.ValidateChildID(ref childID);
+                if (childID != null && ((int)childID) == LISTBOX_ACC_ITEM_INDEX)
+                {
+                    return this.KeyboardShortcut;
+                }
+                else
+                {
+                    return base.get_accKeyboardShortcutInternal(childID);
+                }
+            }
+
+            /// <summary>
+            /// Gets the collection of item accessible objects.
+            /// </summary>
+            public ListBoxItemAccessibleObjectCollection ItemAccessibleObjects
+            {
+                get
+                {
+                    return _itemAccessibleObjects;
+                }
+            }
+
+            /// <summary>
+            /// Returns the element in the specified direction.
+            /// </summary>
+            /// <param name="direction">Indicates the direction in which to navigate.</param>
+            /// <returns>Returns the element in the specified direction.</returns>
+            internal override UnsafeNativeMethods.IRawElementProviderFragment FragmentNavigate(UnsafeNativeMethods.NavigateDirection direction)
+            {
+                if (direction == UnsafeNativeMethods.NavigateDirection.FirstChild ||
+                    direction == UnsafeNativeMethods.NavigateDirection.LastChild)
+                {
+                    foreach (var item in _owningListBox.Items.EntryArray.Entries)
+                    {
+                        if (item != null)
+                        {
+                            var _ = _itemAccessibleObjects[item];
+                        }
+                    }
+                }
+
+                if (direction == UnsafeNativeMethods.NavigateDirection.FirstChild)
+                {
+                    var childFragmentCount = _itemAccessibleObjects.Count;
+                    if (childFragmentCount > 0)
+                    {
+                        return (ListBoxItemAccessibleObject)_itemAccessibleObjects[_owningListBox.Items.EntryArray.Entries[0]];
+                    }
+                }
+
+                if (direction == UnsafeNativeMethods.NavigateDirection.LastChild)
+                {
+                    var childFragmentCount = _owningListBox.Items.Count;
+                    if (childFragmentCount > 0)
+                    {
+                        return (ListBoxItemAccessibleObject)_itemAccessibleObjects[_owningListBox.Items.EntryArray.Entries[childFragmentCount - 1]];
+                    }
+                }
+
+                return base.FragmentNavigate(direction);
+            }
+
+            internal override UnsafeNativeMethods.IRawElementProviderFragmentRoot FragmentRoot
+            {
+                get
+                {
+                    return this;
+                }
+            }
+
+            /// <summary>
+            /// Gets the accessible property value.
+            /// </summary>
+            /// <param name="propertyID">The accessible property ID.</param>
+            /// <returns>The accessible property value.</returns>
+            internal override object GetPropertyValue(int propertyID)
+            {
+                switch (propertyID)
+                {
+                    case NativeMethods.UIA_ControlTypePropertyId:
+                        return NativeMethods.UIA_ListControlTypeId;
+                    case NativeMethods.UIA_NamePropertyId:
+                        return Name;
+                    case NativeMethods.UIA_HasKeyboardFocusPropertyId:
+                        return _owningListBox.Focused;
+                    case NativeMethods.UIA_NativeWindowHandlePropertyId:
+                        return _owningListBox.Handle;
+                    case NativeMethods.UIA_IsControlElementPropertyId:
+                        return true;
+                    case NativeMethods.UIA_IsContentElementPropertyId:
+                        return true;
+                    case NativeMethods.UIA_IsScrollPatternAvailablePropertyId:
+                        return IsPatternSupported(NativeMethods.UIA_ScrollPatternId);
+                    case NativeMethods.UIA_ClassNamePropertyId:
+                        return nameof(ListBox);
+                    default:
+                        return base.GetPropertyValue(propertyID);
+                }
+            }
+
+            internal void ResetListItemAccessibleObjects()
+            {
+                _itemAccessibleObjects.Clear();
+            }
+
+            internal void SetListBoxItemFocus()
+            {
+                var selectedItem = _owningListBox.SelectedItem;
+                if (selectedItem == null)
+                {
+                    return;
+                }
+
+                var itemAccessibleObject = ItemAccessibleObjects[selectedItem] as ListBoxItemAccessibleObject;
+                if (itemAccessibleObject != null)
+                {
+                    itemAccessibleObject.SetFocus();
+                }
+            }
+
+            internal void SetListBoxItemSelection()
+            {
+                var selectedItem = _owningListBox.SelectedItem;
+                if (selectedItem == null)
+                {
+                    return;
+                }
+
+                var itemAccessibleObject = ItemAccessibleObjects[selectedItem] as ListBoxItemAccessibleObject;
+                if (itemAccessibleObject != null)
+                {
+                    itemAccessibleObject.RaiseAutomationEvent(NativeMethods.UIA_SelectionItem_ElementSelectedEventId);
+                }
+            }
+
+            internal override void SetFocus()
+            {
+                base.SetFocus();
+
+                RaiseAutomationEvent(NativeMethods.UIA_AutomationFocusChangedEventId);
+            }
+
+            internal override bool CanSelectMultiple => false;
+            internal override bool IsSelectionRequired => true;
         }
 
         internal class ListBoxItemAccessibleObjectCollection : Hashtable
         {
             private readonly ListBox _owningListBoxBox;
             private readonly ObjectIDGenerator _idGenerator = new ObjectIDGenerator();
+            private readonly ListBoxAccessibleObject _owner;
 
-            public ListBoxItemAccessibleObjectCollection(ListBox owningListBoxBox)
+            public ListBoxItemAccessibleObjectCollection(ListBox owningListBoxBox, ListBoxAccessibleObject owner)
             {
                 _owningListBoxBox = owningListBoxBox;
+                _owner = owner;
             }
 
             public override object this[object key]
@@ -3959,7 +4172,7 @@ namespace System.Windows.Forms {
                     int id = GetId(key);
                     if (!ContainsKey(id))
                     {
-                        var itemAccessibleObject = new ListBoxItemAccessibleObject(_owningListBoxBox, key);
+                        var itemAccessibleObject = new ListBoxItemAccessibleObject(_owningListBoxBox, key, _owner);
                         base[id] = itemAccessibleObject;
                     }
 
@@ -3987,31 +4200,300 @@ namespace System.Windows.Forms {
         [ComVisible(true)]
         internal class ListBoxItemAccessibleObject : AccessibleObject
         {
-            private readonly ListBox _owningListBox;
-            private readonly object _item;
+            private const string LIST_BOX_LIST_AUTOMATION_ID = "1000";
 
-            public ListBoxItemAccessibleObject(ListBox owningListBox, object item)
+            private readonly ListBox _owningListBox;
+            private readonly ListBox.ItemArray.Entry _item;
+            private readonly int _itemId;
+            private readonly ListBoxAccessibleObject _owner;
+            private IAccessible _systemIAccessible;
+
+
+            public ListBoxItemAccessibleObject(ListBox owningListBox, object item, ListBoxAccessibleObject owner)
             {
                 _owningListBox = owningListBox;
-                _item = item;
+                _item = (ListBox.ItemArray.Entry)item;
+                _itemId = Array.IndexOf(_owningListBox.Items.EntryArray.Entries, _item);
+                _owner = owner;
+                _systemIAccessible = owner.GetSystemIAccessibleInternal();
+            }
+
+            /// <summary>
+            /// Gets the ListBox Item bounds.
+            /// </summary>
+            public override Rectangle Bounds
+            {
+                get
+                {
+                    NativeMethods.RECT rect = new NativeMethods.RECT(0, 0, 0, 0);
+                    _owningListBox.SendMessage(NativeMethods.LB_GETITEMRECT, _itemId, ref rect).ToInt32();
+                    Rectangle bounds = Rectangle.FromLTRB(rect.left, rect.top, rect.right, rect.bottom);
+
+                    if (bounds.Y < 0 || bounds.Height <= 0)
+                    {
+                        return Rectangle.Empty;
+                    }
+
+                    bounds.X += _owner.Bounds.X; //
+                    bounds.Y += _owner.Bounds.Y; // Coercion to coordinates on the screen
+
+                    if (_owner.VisibleArea.Bottom < bounds.Top)
+                    {
+                        return Rectangle.Empty;
+                    }
+
+                    if(_owner.VisibleArea.Bottom < bounds.Bottom)
+                    {
+                        bounds.Height = _owner.VisibleArea.Bottom - bounds.Top;
+                    }
+
+                    bounds.Width = _owner.VisibleArea.Width;
+
+                    return bounds;
+                }
+            }
+
+            /// <summary>
+            /// Gets the ListBox item default action.
+            /// </summary>
+            public override string DefaultAction
+            {
+                get
+                {
+                    return _systemIAccessible.accDefaultAction[GetChildId()];
+                }
+            }
+
+            internal override UnsafeNativeMethods.IRawElementProviderFragment FragmentNavigate(UnsafeNativeMethods.NavigateDirection direction)
+            {
+                switch (direction)
+                {
+                    case UnsafeNativeMethods.NavigateDirection.Parent:
+                        return _owningListBox.AccessibilityObject;
+                    case UnsafeNativeMethods.NavigateDirection.PreviousSibling:
+                        if (_itemId < 1)
+                        {
+                            return null;
+                        }
+                        else
+                        {
+                            return (ListBoxItemAccessibleObject)_owner.ItemAccessibleObjects[_owningListBox.Items.EntryArray.Entries[_itemId - 1]];
+                        }
+                    case UnsafeNativeMethods.NavigateDirection.NextSibling:
+                        if (_itemId > _owningListBox.Items.Count - 2)
+                        {
+                            return null;
+                        }
+                        else
+                        {
+                            return (ListBoxItemAccessibleObject)_owner.ItemAccessibleObjects[_owningListBox.Items.EntryArray.Entries[_itemId + 1]];
+                        }
+                }
+
+                return base.FragmentNavigate(direction);
+            }
+
+            internal override UnsafeNativeMethods.IRawElementProviderFragmentRoot FragmentRoot
+            {
+                get
+                {
+                    return _owningListBox.AccessibilityObject;
+                }
+            }
+
+            internal override int GetChildId()
+            {
+                return _itemId + 1; // Index is zero-based, Child ID is 1-based.
+            }
+
+            internal override object GetPropertyValue(int propertyID)
+            {
+                switch (propertyID)
+                {
+                    case NativeMethods.UIA_RuntimeIdPropertyId:
+                        return RuntimeId;
+                    case NativeMethods.UIA_BoundingRectanglePropertyId:
+                        return Bounds;
+                    case NativeMethods.UIA_ControlTypePropertyId:
+                        return NativeMethods.UIA_ListItemControlTypeId;
+                    case NativeMethods.UIA_NamePropertyId:
+                        return Name;
+                    case NativeMethods.UIA_AccessKeyPropertyId:
+                        return string.Empty;
+                    case NativeMethods.UIA_HasKeyboardFocusPropertyId:
+                        return false; // Narrator should keep the keyboard focus on th ListBox itself
+                    case NativeMethods.UIA_IsKeyboardFocusablePropertyId:
+                        return (State & AccessibleStates.Focusable) == AccessibleStates.Focusable;
+                    case NativeMethods.UIA_IsEnabledPropertyId:
+                        return _owningListBox.Enabled;
+                    case NativeMethods.UIA_AutomationIdPropertyId:
+                        return LIST_BOX_LIST_AUTOMATION_ID;
+                    case NativeMethods.UIA_HelpTextPropertyId:
+                        return Help ?? string.Empty;
+                    case NativeMethods.UIA_IsPasswordPropertyId:
+                        return false;
+                    case NativeMethods.UIA_NativeWindowHandlePropertyId:
+                        return _owningListBox.Handle;
+                    case NativeMethods.UIA_IsOffscreenPropertyId:
+                        return (State & AccessibleStates.Offscreen) == AccessibleStates.Offscreen;
+                    case NativeMethods.UIA_IsSelectionItemPatternAvailablePropertyId:
+                        return IsPatternSupported(NativeMethods.UIA_SelectionItemPatternId);
+                    case NativeMethods.UIA_IsScrollItemPatternAvailablePropertyId:
+                        return IsPatternSupported(NativeMethods.UIA_ScrollItemPatternId);
+                    default:
+                        return base.GetPropertyValue(propertyID);
+                }
+            }
+
+            /// <summary>
+            /// Gets the help text.
+            /// </summary>
+            public override string Help
+            {
+                get
+                {
+                    return _systemIAccessible.accHelp[GetChildId()];
+                }
+            }
+
+            /// <summary>
+            /// Indicates whether specified pattern is supported.
+            /// </summary>
+            /// <param name="patternId">The pattern ID.</param>
+            /// <returns>True if specified </returns>
+            internal override bool IsPatternSupported(int patternId)
+            {
+                if (patternId == NativeMethods.UIA_ScrollItemPatternId ||
+                    patternId == NativeMethods.UIA_LegacyIAccessiblePatternId ||
+                    patternId == NativeMethods.UIA_SelectionItemPatternId)
+                {
+                    return true;
+                }
+
+                return base.IsPatternSupported(patternId);
+            }
+
+            /// <summary>
+            /// Gets or sets the accessible name.
+            /// </summary>
+            public override string Name
+            {
+                get
+                {
+                    if (_owningListBox != null)
+                    {
+                        return _item.item.ToString();
+                    }
+
+                    return base.Name;
+                }
+
+                set
+                {
+                    base.Name = value;
+                }
+            }
+
+            /// <summary>
+            /// Gets the accessible role.
+            /// </summary>
+            public override AccessibleRole Role
+            {
+                get
+                {
+                    return (AccessibleRole)_systemIAccessible.get_accRole(GetChildId());
+                }
+            }
+
+            /// <summary>
+            /// Gets the runtime ID.
+            /// </summary>
+            internal override int[] RuntimeId
+            {
+                get
+                {
+                    var runtimeId = new int[4];
+                    runtimeId[0] = RuntimeIDFirstItem;
+                    runtimeId[1] = (int)(long)_owningListBox.Handle;
+                    runtimeId[2] = _owningListBox.GetHashCode();
+                    runtimeId[3] = _item.GetHashCode();
+
+                    return runtimeId;
+                }
+            }
+
+            /// <summary>
+            /// Gets the accessible state.
+            /// </summary>
+            public override AccessibleStates State
+            {
+                get
+                {
+                    AccessibleStates state = AccessibleStates.Focusable;
+                    if (_owningListBox.Focused)
+                    {
+                        state |= AccessibleStates.Focused;
+                    }
+
+                    state |= (AccessibleStates)_systemIAccessible.get_accState(GetChildId());
+                    return state;
+                }
+            }
+
+            internal override void SetFocus()
+            {
+                RaiseAutomationEvent(NativeMethods.UIA_AutomationFocusChangedEventId);
+
+                base.SetFocus();
+            }
+
+            internal override void SelectItem()
+            {
+                _owningListBox.SelectedIndex = _itemId;
+
+                SafeNativeMethods.InvalidateRect(new HandleRef(this, _owningListBox.Handle), null, false);
+            }
+
+            internal override void AddToSelection()
+            {
+                SelectItem();
+            }
+
+            internal override void RemoveFromSelection()
+            {
+                // Do nothing, C++ implementation returns UIA_E_INVALIDOPERATION 0x80131509
+            }
+
+            internal override bool IsItemSelected
+            {
+                get
+                {
+                    return (State & AccessibleStates.Selected) != 0;
+                }
+            }
+
+            internal override UnsafeNativeMethods.IRawElementProviderSimple ItemSelectionContainer
+            {
+                get
+                {
+                    return _owner;
+                }
             }
 
             internal override void ScrollIntoView()
             {
-                var itemId = Array.IndexOf(_owningListBox.Items.EntryArray.Entries, _item);
-                
                 if (_owningListBox.SelectedIndex == -1) //no item selected
                 {
-                    _owningListBox.SendMessage(NativeMethods.LB_SETCARETINDEX, itemId, 0);
+                    _owningListBox.SendMessage(NativeMethods.LB_SETCARETINDEX, _itemId, 0);
 
                     return;
                 }
                 
                 int firstVisibleIndex = _owningListBox.SendMessage(NativeMethods.LB_GETTOPINDEX, 0, 0).ToInt32();
 
-                if (itemId < firstVisibleIndex)
+                if (_itemId < firstVisibleIndex)
                 {
-                    _owningListBox.SendMessage(NativeMethods.LB_SETTOPINDEX, itemId, 0);
+                    _owningListBox.SendMessage(NativeMethods.LB_SETTOPINDEX, _itemId, 0);
 
                     return;
                 }
@@ -4033,25 +4515,75 @@ namespace System.Windows.Forms {
                     int lastVisibleIndex = i - 1; // - 1 because last "i" index is invisible
                     visibleItemsCount = lastVisibleIndex - firstVisibleIndex + 1; // + 1 because array indexes begin since 0
 
-                    if (itemId > lastVisibleIndex)
+                    if (_itemId > lastVisibleIndex)
                     {
-                        _owningListBox.SendMessage(NativeMethods.LB_SETTOPINDEX, itemId - visibleItemsCount + 1, 0);
+                        _owningListBox.SendMessage(NativeMethods.LB_SETTOPINDEX, _itemId - visibleItemsCount + 1, 0);
                     }
 
                     break;
                 }
             }
 
-            internal override bool IsPatternSupported(int patternId)
+            /// <summary>
+            /// Return the child object at the given screen coordinates.
+            /// </summary>
+            /// <param name="x">X coordinate.</param>
+            /// <param name="y">Y coordinate.</param>
+            /// <returns>The accessible object of corresponding element in the provided coordinates.</returns>
+            internal override UnsafeNativeMethods.IRawElementProviderFragment ElementProviderFromPoint(double x, double y)
             {
-                if (patternId == NativeMethods.UIA_ScrollItemPatternId)
+                var systemIAccessible = GetSystemIAccessibleInternal();
+                if (systemIAccessible != null)
                 {
-                    return true;
+                    object result = systemIAccessible.accHitTest((int)x, (int)y);
+                    if (result is int)
+                    {
+                        int childId = (int)result;
+                        return GetChildFragment(childId - 1);
+                    }
+                    else
+                    {
+                        return null;
+                    }
                 }
 
-                return base.IsPatternSupported(patternId);
+                return base.ElementProviderFromPoint(x, y);
             }
+
+            public AccessibleObject GetChildFragment(int index)
+            {
+                if (index < 0 || index >= _owningListBox.Items.Count)
+                {
+                    return null;
+                }
+
+                return _owner.ItemAccessibleObjects[_item] as AccessibleObject;
+            }
+
+            internal override UnsafeNativeMethods.IRawElementProviderFragment GetFocus()
+            {
+                return GetFocused();
+            }
+
+            public override AccessibleObject GetFocused()
+            {
+                int selectedIndex = _owningListBox.SelectedIndex;
+                return GetChildFragment(selectedIndex);
+            }
+
+            internal override UnsafeNativeMethods.IRawElementProviderSimple[] GetSelection()
+            {
+                int selectedIndex = _owningListBox.SelectedIndex;
+
+                AccessibleObject itemAccessibleObject = GetChildFragment(selectedIndex);
+                if (itemAccessibleObject != null)
+                {
+                    return new UnsafeNativeMethods.IRawElementProviderSimple[] {
+                        itemAccessibleObject
+                    };
+                }
+
+                return new UnsafeNativeMethods.IRawElementProviderSimple[0];
         }
     }
 }
-

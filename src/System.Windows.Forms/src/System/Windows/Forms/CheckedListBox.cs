@@ -1320,6 +1320,8 @@ namespace System.Windows.Forms {
             }
         }
 
+        internal override bool SupportsUiaProviders => false;
+
         /// <devdoc>
         /// </devdoc>
         [System.Runtime.InteropServices.ComVisible(true)]
