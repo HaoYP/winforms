@@ -4157,6 +4157,68 @@ namespace System.Windows.Forms {
 
             internal override bool CanSelectMultiple => false;
             internal override bool IsSelectionRequired => true;
+
+            /// <summary>
+            /// Return the child object at the given screen coordinates.
+            /// </summary>
+            /// <param name="x">X coordinate.</param>
+            /// <param name="y">Y coordinate.</param>
+            /// <returns>The accessible object of corresponding element in the provided coordinates.</returns>
+            internal override UnsafeNativeMethods.IRawElementProviderFragment ElementProviderFromPoint(double x, double y)
+            {
+                var systemIAccessible = GetSystemIAccessibleInternal();
+                if (systemIAccessible != null)
+                {
+                    object result = systemIAccessible.accHitTest((int)x, (int)y);
+                    if (result is int)
+                    {
+                        int childId = (int)result;
+                        return GetChildFragment(childId - 1);
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+
+                return base.ElementProviderFromPoint(x, y);
+            }
+
+            public AccessibleObject GetChildFragment(int index)
+            {
+                if (index < 0 || index >= _owningListBox.Items.Count)
+                {
+                    return null;
+                }
+
+                return ItemAccessibleObjects[_owningListBox.Items.EntryArray.Entries[index]] as AccessibleObject;
+            }
+
+            internal override UnsafeNativeMethods.IRawElementProviderFragment GetFocus()
+            {
+                return GetFocused();
+            }
+
+            public override AccessibleObject GetFocused()
+            {
+                int selectedIndex = _owningListBox.SelectedIndex;
+                return GetChildFragment(selectedIndex);
+            }
+
+            internal override UnsafeNativeMethods.IRawElementProviderSimple[] GetSelection()
+            {
+                int selectedIndex = _owningListBox.SelectedIndex;
+
+                AccessibleObject itemAccessibleObject = GetChildFragment(selectedIndex);
+                if (itemAccessibleObject != null)
+                {
+                    return new UnsafeNativeMethods.IRawElementProviderSimple[] {
+                        itemAccessibleObject
+                    };
+                }
+
+                return new UnsafeNativeMethods.IRawElementProviderSimple[0];
+            }
         }
 
         internal class ListBoxItemAccessibleObjectCollection : Hashtable
@@ -4206,8 +4268,6 @@ namespace System.Windows.Forms {
         [ComVisible(true)]
         internal class ListBoxItemAccessibleObject : AccessibleObject
         {
-            private const string LIST_BOX_LIST_AUTOMATION_ID = "1000";
-
             private readonly ListBox _owningListBox;
             private readonly ListBox.ItemArray.Entry _item;
             private readonly int _itemId;
@@ -4332,8 +4392,6 @@ namespace System.Windows.Forms {
                         return (State & AccessibleStates.Focusable) == AccessibleStates.Focusable;
                     case NativeMethods.UIA_IsEnabledPropertyId:
                         return _owningListBox.Enabled;
-                    case NativeMethods.UIA_AutomationIdPropertyId:
-                        return LIST_BOX_LIST_AUTOMATION_ID;
                     case NativeMethods.UIA_HelpTextPropertyId:
                         return Help ?? string.Empty;
                     case NativeMethods.UIA_IsPasswordPropertyId:
@@ -4448,7 +4506,7 @@ namespace System.Windows.Forms {
 
             internal override void SetFocus()
             {
-                RaiseAutomationEvent(NativeMethods.UIA_AutomationFocusChangedEventId);
+                this.RaiseAutomationEvent(NativeMethods.UIA_AutomationFocusChangedEventId);
 
                 base.SetFocus();
             }
@@ -4528,32 +4586,6 @@ namespace System.Windows.Forms {
 
                     break;
                 }
-            }
-
-            /// <summary>
-            /// Return the child object at the given screen coordinates.
-            /// </summary>
-            /// <param name="x">X coordinate.</param>
-            /// <param name="y">Y coordinate.</param>
-            /// <returns>The accessible object of corresponding element in the provided coordinates.</returns>
-            internal override UnsafeNativeMethods.IRawElementProviderFragment ElementProviderFromPoint(double x, double y)
-            {
-                var systemIAccessible = GetSystemIAccessibleInternal();
-                if (systemIAccessible != null)
-                {
-                    object result = systemIAccessible.accHitTest((int)x, (int)y);
-                    if (result is int)
-                    {
-                        int childId = (int)result;
-                        return GetChildFragment(childId - 1);
-                    }
-                    else
-                    {
-                        return null;
-                    }
-                }
-
-                return base.ElementProviderFromPoint(x, y);
             }
 
             public AccessibleObject GetChildFragment(int index)
