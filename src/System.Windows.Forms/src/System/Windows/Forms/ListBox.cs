@@ -3954,6 +3954,21 @@ namespace System.Windows.Forms {
                 _itemAccessibleObjects = new ListBoxItemAccessibleObjectCollection(owningListBox, this);
             }
 
+            internal override UnsafeNativeMethods.IRawElementProviderSimple[] GetSelection()
+            {
+                int selectedIndex = _owningListBox.SelectedIndex;
+
+                AccessibleObject itemAccessibleObject = GetChildFragment(selectedIndex);
+                if (itemAccessibleObject != null)
+                {
+                    return new UnsafeNativeMethods.IRawElementProviderSimple[] {
+                        itemAccessibleObject
+                    };
+                }
+
+                return new UnsafeNativeMethods.IRawElementProviderSimple[0];
+            }
+
             public override Rectangle Bounds
             {
                 get
